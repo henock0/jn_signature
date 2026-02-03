@@ -1,18 +1,18 @@
-// src/app/not-found.tsx
+// app/not-found.tsx
 import Link from 'next/link';
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
       <div className="max-w-md w-full text-center">
-        <div className="text-6xl mb-6">🔍</div>
-        <h1 className="text-4xl font-serif font-bold text-gray-900 mb-4">
+        <div className="text-9xl font-serif font-bold text-gold-primary mb-4">404</div>
+        <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
           Page non trouvée
         </h1>
         <p className="text-gray-600 mb-8 text-lg">
           Désolé, la page que vous recherchez n'existe pas ou a été déplacée.
         </p>
-        <div className="flex gap-4 justify-center flex-wrap">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <Link
             href="/"
             className="bg-gold-primary text-black px-6 py-3 rounded-lg font-semibold hover:bg-gold-light transition-colors"

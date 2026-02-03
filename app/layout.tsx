@@ -1,21 +1,20 @@
-// src/app/layout.tsx
+// app/layout.tsx - Version finale
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/ui/Header';
 import Footer from '@/components/ui/Footer';
-import { CartProvider } from '@/context/CartContext';
 import MobileNavBar from '@/components/ui/MobileNavBar';
+import { CartProvider } from '@/context/CartContext';
+import { AuthProvider } from '@/context/AuthContext';
 
 const inter = Inter({ 
   subsets: ['latin'],
   display: 'swap',
-  adjustFontFallback: false 
 });
 
 export const metadata = {
   title: 'JN SIGNATURE - Votre style, notre signature',
   description: 'Boutique en ligne JN SIGNATURE - Vêtements, chaussures, accessoires et parfums de qualité',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no',
 };
 
 export default function RootLayout({
@@ -23,22 +22,30 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Vérifier si on est sur une page d'authentification
+  const isAuthPage = children?.props?.childProp?.segment === 'auth';
+
   return (
     <html lang="fr" className="h-full">
       <body className={`${inter.className} h-full antialiased`}>
-        <CartProvider>
-          <div className="min-h-screen bg-white flex flex-col">
-            <Header />
-            <main className="flex-1 w-full">
-              {children}
-            </main>
-            <Footer />
-            {/* Navigation mobile - visible seulement sur mobile */}
-            <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
-              <MobileNavBar />
+        <AuthProvider>
+          <CartProvider>
+            <div className="min-h-screen bg-white flex flex-col">
+              {/* Ne pas afficher le header et footer sur les pages d'authentification */}
+              {!isAuthPage && <Header />}
+              <main className={`flex-1 w-full ${isAuthPage ? '' : 'pb-20 lg:pb-0'}`}>
+                {children}
+              </main>
+              {!isAuthPage && <Footer />}
+              {/* Navigation mobile - visible seulement sur mobile et pas sur les pages auth */}
+              {!isAuthPage && (
+                <div className="fixed bottom-0 left-0 right-0 z-50 lg:hidden">
+                  <MobileNavBar />
+                </div>
+              )}
             </div>
-          </div>
-        </CartProvider>
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

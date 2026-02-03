@@ -1,7 +1,7 @@
-// src/context/CartContext.tsx
+// context/CartContext.tsx
 'use client';
 import React, { createContext, useContext, useReducer, ReactNode } from 'react';
-import { Product } from '@/data/products';
+import { Product } from '@/lib/firebase';
 
 interface CartItem {
   product: Product;
@@ -16,15 +16,15 @@ interface CartState {
 
 type CartAction =
   | { type: 'ADD_TO_CART'; payload: { product: Product; quantity: number; size?: string; color?: string } }
-  | { type: 'REMOVE_FROM_CART'; payload: { productId: number } }
-  | { type: 'UPDATE_QUANTITY'; payload: { productId: number; quantity: number } }
+  | { type: 'REMOVE_FROM_CART'; payload: { productId: string } }
+  | { type: 'UPDATE_QUANTITY'; payload: { productId: string; quantity: number } }
   | { type: 'CLEAR_CART' };
 
 const CartContext = createContext<{
   state: CartState;
   addToCart: (product: Product, quantity?: number, size?: string, color?: string) => void;
-  removeFromCart: (productId: number) => void;
-  updateQuantity: (productId: number, quantity: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   getTotalItems: () => number;
   getTotalPrice: () => number;
@@ -34,7 +34,9 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_TO_CART':
       const existingItemIndex = state.items.findIndex(
-        item => item.product.id === action.payload.product.id
+        item => item.product.id === action.payload.product.id &&
+               item.selectedSize === action.payload.size &&
+               item.selectedColor === action.payload.color
       );
 
       if (existingItemIndex > -1) {
@@ -87,11 +89,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: 'ADD_TO_CART', payload: { product, quantity, size, color } });
   };
 
-  const removeFromCart = (productId: number) => {
+  const removeFromCart = (productId: string) => {
     dispatch({ type: 'REMOVE_FROM_CART', payload: { productId } });
   };
 
-  const updateQuantity = (productId: number, quantity: number) => {
+  const updateQuantity = (productId: string, quantity: number) => {
     if (quantity <= 0) {
       removeFromCart(productId);
     } else {

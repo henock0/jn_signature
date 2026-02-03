@@ -137,9 +137,7 @@ export default function Footer() {
           <div className="flex space-x-6 mt-4 md:mt-0">
             {[
               { name: 'Mentions légales', href: '#' },
-              { name: 'Confidentialité', href: '#' },
-              { name: 'CGV', href: '#' },
-              { name: 'Cookies', href: '#' }
+              { name: 'Confidentialité', href: '#' }
             ].map((link) => (
               <Link
                 key={link.name}

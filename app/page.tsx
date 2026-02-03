@@ -1,45 +1,344 @@
-// src/app/page.tsx
+// app/page.tsx - Version corrigée avec meilleure gestion d'erreurs
 'use client';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ProductCard from '@/components/ui/ProductCard';
-import { products, categories } from '@/data/products';
+import { productsAPI } from '@/lib/api';
+import { Product, Category } from '@/lib/firebase';
 
-const featuredProducts = products.filter(product => product.featured || product.id <= 8);
+// Données temporaires améliorées
+const temporaryProducts: Product[] = [
+  {
+    id: '1',
+    name: "Chemise Signature Homme",
+    description: "Chemise élégante pour homme, tissu premium, confort exceptionnel",
+    price: 20,
+    original_price: null,
+    category_id: '1',
+    sub_category: "Homme",
+    image_url: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=500&h=500&fit=crop",
+    stock: 50,
+    sizes: ["S", "M", "L", "XL"],
+    colors: ["Blanc", "Bleu", "Noir"],
+    featured: true,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '1',
+      name: 'Vêtements Homme',
+      slug: 'vetements-homme',
+      description: 'Collection de vêtements pour homme',
+      image_url: 'https://images.unsplash.com/photo-1441984904996-e0b51ba765e3?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '2',
+    name: "Ketchs Limited Edition",
+    description: "Baskets premium édition limitée, confort exceptionnel, style unique",
+    price: 25,
+    original_price: 30,
+    category_id: '3',
+    sub_category: "Ketchs",
+    image_url: "https://images.unsplash.com/photo-1549298916-b41d501d3772?w=500&h=500&fit=crop",
+    stock: 30,
+    sizes: ["38", "39", "40", "41", "42"],
+    colors: ["Noir", "Blanc", "Rouge"],
+    featured: true,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '3',
+      name: 'Chaussures',
+      slug: 'chaussures',
+      description: 'Collection de chaussures et baskets',
+      image_url: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '3',
+    name: "Parfum JN Élixir",
+    description: "Fragrance exclusive aux notes boisées et épicées, tenue longue durée",
+    price: 60,
+    original_price: null,
+    category_id: '5',
+    sub_category: null,
+    image_url: "https://images.unsplash.com/photo-1541643600914-78b084683601?w=500&h=500&fit=crop",
+    stock: 25,
+    sizes: null,
+    colors: null,
+    featured: true,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '5',
+      name: 'Parfums',
+      slug: 'parfums',
+      description: 'Collection de parfums et fragrances',
+      image_url: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '4',
+    name: "Sac Chrisbella Premium",
+    description: "Sac de marque Chrisbella, design exclusif, cuir véritable",
+    price: 50,
+    original_price: 60,
+    category_id: '4',
+    sub_category: null,
+    image_url: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=500&h=500&fit=crop",
+    stock: 15,
+    sizes: null,
+    colors: ["Noir", "Marron", "Rouge"],
+    featured: true,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '4',
+      name: 'Accessoires',
+      slug: 'accessoires',
+      description: "Collection d'accessoires mode",
+      image_url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '5',
+    name: "Pantalon Élégant Homme",
+    description: "Pantalon classique, coupe moderne, tissu stretch",
+    price: 20,
+    original_price: null,
+    category_id: '1',
+    sub_category: "Homme",
+    image_url: "https://images.unsplash.com/photo-1542272604-787c3835535d?w=500&h=500&fit=crop",
+    stock: 35,
+    sizes: ["38", "40", "42", "44"],
+    colors: ["Noir", "Marron", "Beige"],
+    featured: false,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '1',
+      name: 'Vêtements Homme',
+      slug: 'vetements-homme',
+      description: 'Collection de vêtements pour homme',
+      image_url: 'https://images.unsplash.com/photo-1441984904996-e0b51ba765e3?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '6',
+    name: "Ensemble Femme Élégant",
+    description: "Ensemble complet pour femme, style moderne et raffiné",
+    price: 35,
+    original_price: 40,
+    category_id: '2',
+    sub_category: "Femme",
+    image_url: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=500&h=500&fit=crop",
+    stock: 25,
+    sizes: ["XS", "S", "M", "L"],
+    colors: ["Noir", "Rouge", "Blanc", "Rose"],
+    featured: false,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '2',
+      name: 'Vêtements Femme',
+      slug: 'vetements-femme',
+      description: 'Collection de vêtements pour femme',
+      image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '7',
+    name: "Mocassins Chic Homme",
+    description: "Mocassins en cuir, style casual chic, confort optimal",
+    price: 25,
+    original_price: null,
+    category_id: '3',
+    sub_category: "Mocassins",
+    image_url: "https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=500&h=500&fit=crop",
+    stock: 20,
+    sizes: ["40", "41", "42", "43", "44"],
+    colors: ["Marron", "Noir", "Bordeaux"],
+    featured: false,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '3',
+      name: 'Chaussures',
+      slug: 'chaussures',
+      description: 'Collection de chaussures et baskets',
+      image_url: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  },
+  {
+    id: '8',
+    name: "Cravate Élégante",
+    description: "Cravate en soie, design classique, qualité premium",
+    price: 10,
+    original_price: 15,
+    category_id: '4',
+    sub_category: null,
+    image_url: "https://images.unsplash.com/photo-1594637378028-0d3c0ec0ab56?w=500&h=500&fit=crop",
+    stock: 50,
+    sizes: null,
+    colors: ["Rouge", "Bleu", "Noir", "Rayé"],
+    featured: false,
+    active: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    categories: {
+      id: '4',
+      name: 'Accessoires',
+      slug: 'accessoires',
+      description: "Collection d'accessoires mode",
+      image_url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=300&fit=crop',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+  }
+];
+
+const temporaryCategories: Category[] = [
+  {
+    id: '1',
+    name: 'Vêtements Homme',
+    slug: 'vetements-homme',
+    description: 'Collection de vêtements pour homme',
+    image_url: 'https://images.unsplash.com/photo-1441984904996-e0b51ba765e3?w=400&h=300&fit=crop',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '2',
+    name: 'Vêtements Femme',
+    slug: 'vetements-femme',
+    description: 'Collection de vêtements pour femme',
+    image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=400&h=300&fit=crop',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '3',
+    name: 'Chaussures',
+    slug: 'chaussures',
+    description: 'Collection de chaussures et baskets',
+    image_url: 'https://images.unsplash.com/photo-1460353581641-37baddab0fa2?w=400&h=300&fit=crop',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '4',
+    name: 'Accessoires',
+    slug: 'accessoires',
+    description: "Collection d'accessoires mode",
+    image_url: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=300&fit=crop',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  },
+  {
+    id: '5',
+    name: 'Parfums',
+    slug: 'parfums',
+    description: 'Collection de parfums et fragrances',
+    image_url: 'https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=300&fit=crop',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  }
+];
 
 export default function Home() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    
-    return () => window.removeEventListener('resize', checkMobile);
+    loadHomeData();
   }, []);
 
-  if (!mounted) {
+  const loadHomeData = async () => {
+    try {
+      setError(null);
+      
+      // Essayer de charger depuis l'API, sinon utiliser les données temporaires
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        productsAPI.getProducts({ featured: true, limit: 8 }),
+        productsAPI.getCategories()
+      ]);
+
+      // Vérifier si on a des erreurs et utiliser les données temporaires si nécessaire
+      if (productsResponse.error) {
+        console.warn('Using temporary products due to error:', productsResponse.error);
+        setFeaturedProducts(temporaryProducts.filter(p => p.featured).slice(0, 8));
+      } else {
+        setFeaturedProducts(productsResponse.data || []);
+      }
+
+      if (categoriesResponse.error) {
+        console.warn('Using temporary categories due to error:', categoriesResponse.error);
+        setCategories(temporaryCategories);
+      } else {
+        setCategories(categoriesResponse.data || []);
+      }
+
+    } catch (error) {
+      console.error('Error loading home data:', error);
+      setError('Erreur lors du chargement des données');
+      // Utiliser les données temporaires en cas d'erreur
+      setFeaturedProducts(temporaryProducts.filter(p => p.featured).slice(0, 8));
+      setCategories(temporaryCategories);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-primary"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen pb-20 lg:pb-0"> {/* Padding pour la nav mobile */}
-      {/* Hero Section Responsive */}
+    <div className="min-h-screen pb-20 lg:pb-0">
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 p-4 text-center">
+          <p className="text-yellow-800">
+            Mode démonstration activé - Données temporaires affichées
+          </p>
+        </div>
+      )}
+
+      {/* Hero Section */}
       <section className="relative h-[50vh] min-h-[400px] lg:h-[600px] bg-gradient-to-r from-gray-900 to-black safe-area-top">
         <div 
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: 'url(https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=600&fit=crop)',
-            backgroundPosition: isMobile ? 'center center' : 'center center'
+            backgroundImage: 'url(https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1200&h=600&fit=crop)'
           }}
         >
           <div className="absolute inset-0 bg-black bg-opacity-50"></div>
@@ -83,7 +382,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Valeurs Responsive */}
+      {/* Valeurs */}
       <section className="bg-gray-light py-8 lg:py-16">
         <div className="container-responsive">
           <div className="text-center mb-8 lg:mb-12">
@@ -129,7 +428,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Produits en Vedette Responsive */}
+      {/* Produits en Vedette */}
       <section className="py-8 lg:py-16 bg-white">
         <div className="container-responsive">
           <div className="text-center mb-8 lg:mb-12 px-4 lg:px-0">
@@ -159,7 +458,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Catégories Responsive */}
+      {/* Catégories */}
       <section className="bg-gray-light py-8 lg:py-16">
         <div className="container-responsive">
           <div className="text-center mb-8 lg:mb-12 px-4 lg:px-0">
@@ -171,15 +470,15 @@ export default function Home() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-6 px-4 lg:px-0">
-            {categories.map((category, index) => (
+            {categories.map((category) => (
               <Link
-                key={category.slug}
+                key={category.id}
                 href={`/boutique?categorie=${category.name}`}
                 className="group relative overflow-hidden rounded-lg lg:rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 touch-target"
               >
                 <div className="aspect-square overflow-hidden">
                   <img 
-                    src={category.image} 
+                    src={category.image_url || '/images/placeholder-category.jpg'} 
                     alt={category.name}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     loading="lazy"
@@ -188,7 +487,6 @@ export default function Home() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 right-0 p-2 lg:p-4 text-white">
                   <h3 className="text-sm lg:text-lg font-semibold text-center mb-1 leading-tight">{category.name}</h3>
-                  <p className="text-gold-light text-xs lg:text-sm text-center">{category.count} produits</p>
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="bg-gold-primary text-black px-3 py-1 lg:px-4 lg:py-2 rounded-lg font-semibold text-xs lg:text-sm transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">
@@ -201,7 +499,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Statistiques Responsive */}
+      {/* Statistiques */}
       <section className="bg-gold-primary py-8 lg:py-16">
         <div className="container-responsive">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-8 text-center px-4 lg:px-0">
@@ -220,59 +518,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Processus d'achat Responsive */}
-      <section className="bg-white py-8 lg:py-16">
-        <div className="container-responsive">
-          <div className="text-center mb-8 lg:mb-12 px-4 lg:px-0">
-            <h2 className="text-2xl lg:text-3xl font-serif font-bold text-gray-900 mb-3 lg:mb-4">
-              Comment <span className="text-gold-primary">Commander</span> ?
-            </h2>
-            <p className="text-gray-600 mb-6 lg:mb-8 text-sm lg:text-base">Un processus simple et sécurisé en 3 étapes</p>
-            <div className="w-20 lg:w-24 h-1 bg-gold-primary mx-auto"></div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-8 px-4 lg:px-0">
-            {[
-              {
-                step: "01",
-                title: "Parcourir & Choisir",
-                description: "Explorez nos collections et sélectionnez vos articles préférés",
-                icon: "🛍️",
-                action: "Voir la boutique"
-              },
-              {
-                step: "02",
-                title: "Commander en Ligne",
-                description: "Remplissez le formulaire de commande avec vos informations",
-                icon: "📱",
-                action: "Passer commande"
-              },
-              {
-                step: "03",
-                title: "Livraison & Satisfaction",
-                description: "Recevez vos articles et profitez de votre nouveau style",
-                icon: "🚚",
-                action: "Nous contacter"
-              }
-            ].map((step, index) => (
-              <div key={index} className="card-mobile lg:card-desktop text-center">
-                <div className="text-4xl lg:text-5xl mb-3 lg:mb-4">{step.icon}</div>
-                <div className="text-gold-primary text-xs lg:text-sm font-bold mb-2">ÉTAPE {step.step}</div>
-                <h3 className="text-lg lg:text-xl font-semibold text-gray-900 mb-2 lg:mb-3">{step.title}</h3>
-                <p className="text-gray-600 mb-4 lg:mb-6 text-sm lg:text-base">{step.description}</p>
-                <Link
-                  href={index === 0 ? "/boutique" : index === 1 ? "/boutique" : "/contact"}
-                  className="inline-block bg-gray-900 text-white px-4 py-2 lg:px-6 lg:py-2 rounded-lg font-semibold hover:bg-gold-primary hover:text-black transition-colors text-xs lg:text-sm"
-                >
-                  {step.action}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Final Responsive */}
+      {/* CTA Final */}
       <section className="bg-gradient-to-r from-gold-primary to-gold-light py-8 lg:py-16">
         <div className="container-responsive text-center px-4 lg:px-0">
           <h2 className="text-2xl lg:text-4xl font-serif font-bold text-black mb-3 lg:mb-4 leading-tight">

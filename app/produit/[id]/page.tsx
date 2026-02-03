@@ -1,28 +1,99 @@
-// src/app/produit/[id]/page.tsx
+// app/produit/[id]/page.tsx
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '@/context/CartContext';
-import { products } from '@/data/products';
+import { productsAPI } from '@/lib/api';
+import { Product } from '@/lib/firebase';
 
 export default function ProductDetail() {
   const params = useParams();
   const router = useRouter();
   const { addToCart } = useCart();
   
-  const productId = parseInt(params.id as string);
-  const product = products.find(p => p.id === productId);
-
-  const [selectedSize, setSelectedSize] = useState(product?.sizes?.[0] || '');
-  const [selectedColor, setSelectedColor] = useState(product?.colors?.[0] || '');
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedSize, setSelectedSize] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [activeImage, setActiveImage] = useState(0);
+
+  const productId = params.id as string;
+
+  useEffect(() => {
+    if (productId) {
+      loadProduct();
+    }
+  }, [productId]);
+
+  const loadProduct = async () => {
+    try {
+      const response = await productsAPI.getProductById(productId);
+      if (response.data) {
+        setProduct(response.data);
+        setSelectedSize(response.data.sizes?.[0] || '');
+        setSelectedColor(response.data.colors?.[0] || '');
+        loadRelatedProducts(response.data.category_id);
+      }
+    } catch (error) {
+      console.error('Error loading product:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadRelatedProducts = async (categoryId: string | null) => {
+    if (!categoryId) return;
+    
+    const response = await productsAPI.getProducts({
+      category: product?.categories?.name,
+      limit: 4
+    });
+    
+    if (response.data) {
+      setRelatedProducts(response.data.filter(p => p.id !== productId));
+    }
+  };
+
+  const handleAddToCart = () => {
+    if (product) {
+      addToCart(product, quantity, selectedSize, selectedColor);
+      alert('Produit ajouté au panier !');
+    }
+  };
+
+  const handleBuyNow = () => {
+    if (product) {
+      addToCart(product, quantity, selectedSize, selectedColor);
+      router.push('/panier');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="container-responsive">
+          <div className="animate-pulse">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="bg-gray-200 h-96 rounded-xl"></div>
+              <div className="space-y-4">
+                <div className="bg-gray-200 h-8 rounded w-3/4"></div>
+                <div className="bg-gray-200 h-4 rounded w-1/2"></div>
+                <div className="bg-gray-200 h-20 rounded"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 py-12">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+        <div className="container-responsive text-center">
           <div className="text-6xl mb-6">😔</div>
           <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
             Produit non trouvé
@@ -41,34 +112,23 @@ export default function ProductDetail() {
     );
   }
 
-  const relatedProducts = products
-    .filter(p => p.category === product.category && p.id !== product.id)
-    .slice(0, 4);
-
-  const handleAddToCart = () => {
-    addToCart(product, quantity, selectedSize, selectedColor);
-    alert('Produit ajouté au panier !');
-  };
-
-  const handleBuyNow = () => {
-    addToCart(product, quantity, selectedSize, selectedColor);
-    router.push('/panier');
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4">
+      <div className="container-responsive">
         {/* Fil d'Ariane */}
         <nav className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
           <Link href="/" className="hover:text-gold-primary transition-colors">Accueil</Link>
           <span>›</span>
           <Link href="/boutique" className="hover:text-gold-primary transition-colors">Boutique</Link>
           <span>›</span>
-          <Link href={`/boutique?categorie=${product.category}`} className="hover:text-gold-primary transition-colors">
-            {product.category}
+          <Link 
+            href={`/boutique?categorie=${product.categories?.name}`} 
+            className="hover:text-gold-primary transition-colors"
+          >
+            {product.categories?.name}
           </Link>
           <span>›</span>
-          <span className="text-gray-900">{product.name}</span>
+          <span className="text-gray-900 truncate">{product.name}</span>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
@@ -76,7 +136,7 @@ export default function ProductDetail() {
           <div>
             <div className="bg-white rounded-2xl shadow-md p-4 mb-4">
               <img 
-                src={product.image} 
+                src={product.image_url} 
                 alt={product.name}
                 className="w-full h-96 object-cover rounded-lg"
               />
@@ -85,38 +145,38 @@ export default function ProductDetail() {
 
           {/* Informations produit */}
           <div>
-            <div className="bg-white rounded-2xl shadow-md p-8">
+            <div className="bg-white rounded-2xl shadow-md p-6 lg:p-8">
               <div className="mb-4">
                 <span className="inline-block bg-gold-primary text-black text-sm px-3 py-1 rounded-full font-semibold mb-2">
-                  {product.category}
+                  {product.categories?.name}
                 </span>
-                {product.subCategory && (
+                {product.sub_category && (
                   <span className="inline-block bg-gray-200 text-gray-700 text-sm px-3 py-1 rounded-full font-semibold mb-2 ml-2">
-                    {product.subCategory}
+                    {product.sub_category}
                   </span>
                 )}
               </div>
 
-              <h1 className="text-3xl font-serif font-bold text-gray-900 mb-4">
+              <h1 className="text-2xl lg:text-3xl font-serif font-bold text-gray-900 mb-4">
                 {product.name}
               </h1>
 
-              <p className="text-gray-600 mb-6 text-lg">
+              <p className="text-gray-600 mb-6 text-lg leading-relaxed">
                 {product.description}
               </p>
 
               <div className="flex items-center mb-6">
-                <span className="text-4xl font-bold text-gold-primary font-serif">
-                  {product.price} $
+                <span className="text-3xl lg:text-4xl font-bold text-gold-primary font-serif">
+                  {product.price} €
                 </span>
-                {product.originalPrice && (
+                {product.original_price && (
                   <span className="text-xl text-gray-500 line-through ml-3">
-                    {product.originalPrice} $
+                    {product.original_price} €
                   </span>
                 )}
-                {product.originalPrice && (
+                {product.original_price && (
                   <span className="bg-red-600 text-white text-sm px-2 py-1 rounded ml-3">
-                    Économisez {product.originalPrice - product.price} $
+                    Économisez {product.original_price - product.price} €
                   </span>
                 )}
               </div>
@@ -124,7 +184,7 @@ export default function ProductDetail() {
               {/* Sélecteurs */}
               {(product.sizes || product.colors) && (
                 <div className="space-y-6 mb-8">
-                  {product.sizes && (
+                  {product.sizes && product.sizes.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
                         Taille *
@@ -147,7 +207,7 @@ export default function ProductDetail() {
                     </div>
                   )}
 
-                  {product.colors && (
+                  {product.colors && product.colors.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">
                         Couleur *
@@ -172,6 +232,17 @@ export default function ProductDetail() {
                 </div>
               )}
 
+              {/* Stock */}
+              <div className="mb-6">
+                <p className={`text-sm font-medium ${
+                  product.stock > 10 ? 'text-green-600' : 
+                  product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {product.stock > 10 ? 'En stock' : 
+                   product.stock > 0 ? `Plus que ${product.stock} disponible(s)` : 'Rupture de stock'}
+                </p>
+              </div>
+
               {/* Quantité et actions */}
               <div className="space-y-4">
                 <div className="flex items-center space-x-4">
@@ -180,6 +251,7 @@ export default function ProductDetail() {
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                       className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                      disabled={quantity <= 1}
                     >
                       -
                     </button>
@@ -187,6 +259,7 @@ export default function ProductDetail() {
                     <button
                       onClick={() => setQuantity(quantity + 1)}
                       className="w-10 h-10 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                      disabled={quantity >= product.stock}
                     >
                       +
                     </button>
@@ -196,13 +269,15 @@ export default function ProductDetail() {
                 <div className="flex gap-4">
                   <button
                     onClick={handleAddToCart}
-                    className="flex-1 bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gold-primary hover:text-black transition-all duration-300 text-lg"
+                    disabled={product.stock === 0}
+                    className="flex-1 bg-gray-900 text-white py-4 rounded-lg font-semibold hover:bg-gold-primary hover:text-black transition-all duration-300 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Ajouter au panier
+                    {product.stock === 0 ? 'Rupture de stock' : 'Ajouter au panier'}
                   </button>
                   <button
                     onClick={handleBuyNow}
-                    className="flex-1 bg-gold-primary text-black py-4 rounded-lg font-semibold hover:bg-gold-light transition-all duration-300 text-lg"
+                    disabled={product.stock === 0}
+                    className="flex-1 bg-gold-primary text-black py-4 rounded-lg font-semibold hover:bg-gold-light transition-all duration-300 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Acheter maintenant
                   </button>
@@ -238,30 +313,7 @@ export default function ProductDetail() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.map(product => (
-                <div key={product.id} className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-shadow">
-                  <Link href={`/produit/${product.id}`}>
-                    <div className="aspect-square overflow-hidden">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">
-                        {product.name}
-                      </h3>
-                      <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-gold-primary">
-                          {product.price} $
-                        </span>
-                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                          {product.category}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
+                <ProductCard key={product.id} product={product} />
               ))}
             </div>
           </section>
